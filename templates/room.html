@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat Room: {{ code }}{% endblock %}
+
+{% block content %}
+<div class="message-box">
+    <h2 class="message-header">
+        <div class="chat-room-title">Chat Room: {{ code }}</div>
+        <div class="user-info">
+            <span id="user-count">1</span> <span id="user-text">User</span> Online
+        </div>
+    </h2>
+    <div id="messages" class="messages"></div>
+    <div id="typing-indicator" class="typing-indicator"></div>
+    <div class="inputs">
+        <textarea id="message" name="message" class="form-textarea" placeholder="Type a message..." rows="3"></textarea>
+        <button type="button" name="send" class="btn send-btn" onClick="sendMessage()">Send</button>
+    </div>
+</div>
+<script type="text/javascript">
+    var socket = io();
+    
+    const SCROLL_MARGIN = 50;
+    const TYPING_TIMEOUT = 3000;
+
+    const messagesContainer = document.getElementById("messages");
+    const messageInput = document.getElementById("message");
+    const typingIndicator = document.getElementById("typing-indicator");
+    const userCountElement = document.getElementById("user-count");
+    const userTextElement = document.getElementById("user-text");
+
+    let isTyping = false;
+    let typingTimeout;
+    let typingUsers = new Set();
+
+    const createMessage = (name, msg, timestamp, color) => {
+        const isAtBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + SCROLL_MARGIN;
+        
+        const messageContent = `
+        <div class="message">
+            <span>
+                <strong style="color: ${color};">${name}</strong>: <span class="message-content">${msg}</span>
+            </span>
+            <span class="muted">
+                ${timestamp}
+            </span>
+        </div>`;
+        
+        messagesContainer.insertAdjacentHTML("beforeend", messageContent);
+        messagesContainer.appendChild(typingIndicator);
+
+        if (isAtBottom) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    };
+
+    socket.on("message", (data) => {
+        createMessage(data.name, data.message, data.timestamp, data.color);
+    });
+    
+    const sendMessage = () => {
+        if (messageInput.value.trim() == "") return;
+        socket.emit("message", { message: messageInput.value });
+        messageInput.value = "";
+    };
+    
+    messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+
+    socket.on("update_users", (data) => {
+        userCountElement.innerText = data.count;
+        userTextElement.innerText = data.count === 1 ? "User" : "Users";
+    });
+
+    const updateTypingIndicator = () => {
+        const usersArray = Array.from(typingUsers);
+        let message = "";
+
+        if (usersArray.length === 0) {
+            message = "";
+        } else if (usersArray.length === 1) {
+            message = `${usersArray[0]} is typing...`;
+        } else if (usersArray.length === 2) {
+            message = `${usersArray[0]} and ${usersArray[1]} are typing...`;
+        } else {
+            message = `${usersArray[0]}, ${usersArray[1]} and others are typing...`;
+        }
+
+        typingIndicator.innerText = message;
+    };
+    
+    socket.on("user_typing", (data) => {
+        typingUsers.add(data.username);
+        console.log(typingUsers);
+        updateTypingIndicator();
+    });
+
+    socket.on("user_stopped_typing", (data) => {
+        typingUsers.delete(data.username);
+        console.log(typingUsers);
+        updateTypingIndicator();
+    });
+
+    messageInput.addEventListener("input", () => {
+        if (!isTyping) {
+            socket.emit("typing");
+            isTyping = true;
+        }
+
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            socket.emit("stop_typing");
+            isTyping = false;
+        }, TYPING_TIMEOUT);
+    });
+</script>
+{% for msg in messages %}
+<script type="text/javascript">
+    createMessage("{{ msg.name }}", "{{ msg.message }}", "{{ msg.timestamp }}", "{{ msg.color }}");
+</script>
+{% endfor %}
+{% endblock %}
