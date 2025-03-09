@@ -32,7 +32,7 @@ Ensure you have Python 3.7+ installed.
 1. Clone this repository:
    ```
    git clone https://github.com/idorombaut/live-chat-room.git
-   cd chat-app
+   cd live-chat-room
    ```
 2. Set up a virtual environment:
    - On Windows (Command Prompt):
