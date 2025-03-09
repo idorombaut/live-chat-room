@@ -2,6 +2,8 @@
 
 This is a real-time chat application built using Flask and Socket.IO. It allows users to create or join chat rooms, send messages, and see real-time updates like typing indicators and user presence.
 
+## Demo Chat Example
+
 ![Home](https://github.com/idorombaut/live-chat-room/blob/main/screenshots/home.png)
 
 ![Chat Room](https://github.com/idorombaut/live-chat-room/blob/main/screenshots/chat_room.png)
